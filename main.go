@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/andlabs/ui"
 	"github.com/joho/godotenv"
@@ -25,20 +25,11 @@ var (
 
 func gui() {
 	connect()
-	b := ui.NewButton("Click me")
+	var c Container
+	table := ui.NewTable(reflect.TypeOf(c))
+	stack := ui.NewVerticalStack(table)
 
-	running := ps()
-	table := ui.NewTable(reflect.TypeOf(running[0]))
-	table.Lock()
-	d := table.Data().(*[]Container)
-	*d = running
-	table.Unlock()
-
-	stack := ui.NewVerticalStack(b, table)
-
-	b.OnClicked(func() {
-		fmt.Println(ps())
-	})
+	go updateTable(table)
 
 	w = ui.NewWindow("Window", 400, 500, stack)
 	w.OnClosing(func() bool {
@@ -46,6 +37,17 @@ func gui() {
 		return true
 	})
 	w.Show()
+}
+
+func updateTable(table ui.Table) {
+	for {
+		running := ps()
+		table.Lock()
+		d := table.Data().(*[]Container)
+		*d = running
+		table.Unlock()
+		time.Sleep(1 * time.Second)
+	}
 }
 
 func connect() {
