@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"reflect"
 	"strings"
 
 	"github.com/andlabs/ui"
@@ -11,6 +12,11 @@ import (
 	"github.com/odewahn/swarm-manager/manager"
 	"github.com/samalba/dockerclient"
 )
+
+type Container struct {
+	Image string
+	Name  string
+}
 
 var (
 	w      ui.Window
@@ -20,10 +26,18 @@ var (
 func gui() {
 	connect()
 	b := ui.NewButton("Click me")
-	stack := ui.NewVerticalStack(b)
+
+	running := ps()
+	table := ui.NewTable(reflect.TypeOf(running[0]))
+	table.Lock()
+	d := table.Data().(*[]Container)
+	*d = running
+	table.Unlock()
+
+	stack := ui.NewVerticalStack(b, table)
 
 	b.OnClicked(func() {
-		ps()
+		fmt.Println(ps())
 	})
 
 	w = ui.NewWindow("Window", 400, 500, stack)
@@ -54,7 +68,8 @@ func connect() {
 
 }
 
-func ps() {
+func ps() []Container {
+	var out []Container
 	// Get only running containers
 	containers, err := docker.ListContainers(false, false, "")
 	if err != nil {
@@ -62,12 +77,14 @@ func ps() {
 	}
 	for _, c := range containers {
 		//log.Println(c.Id)
-		container, _ := docker.InspectContainer(c.Id)
-		fmt.Printf("%s \t %s \t %s\n",
-			c.Image,
-			container.Config.Hostname+"."+container.Config.Domainname,
-			strings.Split(c.Names[0], "/")[2])
+		//container, _ := docker.InspectContainer(c.Id)
+		c_new := Container{
+			Image: c.Image,
+			Name:  strings.Split(c.Names[0], "/")[2],
+		}
+		out = append(out, c_new)
 	}
+	return out
 }
 
 func main() {
