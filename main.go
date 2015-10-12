@@ -27,18 +27,26 @@ func gui() {
 	connect()
 	var c Container
 
+	// Table of running containers
 	table := ui.NewTable(reflect.TypeOf(c))
 	go updateTable(table)
+	container_list_grp := ui.NewGroup("Containers", table)
+	container_list_grp.SetMargined(true)
 
-	g := ui.NewGroup("Containers", table)
-	g.SetMargined(true)
+	//Stack for the control
+	l := ui.NewLabel("Image to start")
+	image_name := ui.NewTextbox()
+	start_btn := ui.NewButton("Launch")
+	control_stack := ui.NewVerticalStack(l, image_name, start_btn)
+	control_grp := ui.NewGroup("Start Images", control_stack)
+	control_grp.SetMargined(true)
 
-	uber_group := ui.NewGroup("", g)
-	uber_group.SetMargined(true)
+	// Now make a new 2 column stack
+	main_stack := ui.NewHorizontalStack(container_list_grp, control_grp)
 
 	//stack := ui.NewVerticalStack(table)
 
-	w = ui.NewWindow("Window", 400, 500, uber_group)
+	w = ui.NewWindow("Window", 400, 500, main_stack)
 	w.OnClosing(func() bool {
 		ui.Stop()
 		return true
