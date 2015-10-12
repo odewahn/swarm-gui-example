@@ -26,12 +26,19 @@ var (
 func gui() {
 	connect()
 	var c Container
-	table := ui.NewTable(reflect.TypeOf(c))
-	stack := ui.NewVerticalStack(table)
 
+	table := ui.NewTable(reflect.TypeOf(c))
 	go updateTable(table)
 
-	w = ui.NewWindow("Window", 400, 500, stack)
+	g := ui.NewGroup("Containers", table)
+	g.SetMargined(true)
+
+	uber_group := ui.NewGroup("", g)
+	uber_group.SetMargined(true)
+
+	//stack := ui.NewVerticalStack(table)
+
+	w = ui.NewWindow("Window", 400, 500, uber_group)
 	w.OnClosing(func() bool {
 		ui.Stop()
 		return true
