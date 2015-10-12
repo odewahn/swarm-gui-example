@@ -9,7 +9,9 @@ import (
 
 	"github.com/andlabs/ui"
 	"github.com/joho/godotenv"
+	"github.com/odewahn/swarm-manager/db"
 	"github.com/odewahn/swarm-manager/manager"
+	"github.com/odewahn/swarm-manager/models"
 	"github.com/samalba/dockerclient"
 )
 
@@ -35,18 +37,39 @@ func gui() {
 
 	//Stack for the control
 	l := ui.NewLabel("Image to start")
-	image_name := ui.NewTextbox()
+	imageName := ui.NewTextField()
+	imageName.SetText("ipython/scipystack")
 	start_btn := ui.NewButton("Launch")
-	control_stack := ui.NewVerticalStack(l, image_name, start_btn)
+
+	start_btn.OnClicked(func() {
+		m := &models.Container{
+			Image:      imageName.Text(),
+			User:       "odewahn",
+			Domainname: "i3.odewahn.com",
+		}
+		status := make(chan string)
+
+		//ui.NewForeignEvent(status, func() {})
+		go manager.Start(m, status)
+
+		<-status //block until we get a message back that the status record is ready
+
+	})
+
+	control_stack := ui.NewVerticalStack(l, imageName, start_btn)
 	control_grp := ui.NewGroup("Start Images", control_stack)
 	control_grp.SetMargined(true)
 
 	// Now make a new 2 column stack
-	main_stack := ui.NewHorizontalStack(container_list_grp, control_grp)
+	main_stack := ui.NewHorizontalStack(control_grp, container_list_grp)
+	main_stack.SetStretchy(0)
+	main_stack.SetStretchy(1)
 
 	//stack := ui.NewVerticalStack(table)
 
-	w = ui.NewWindow("Window", 400, 500, main_stack)
+	w = ui.NewWindow("Window", 600, 300, main_stack)
+	w.SetMargined(true)
+
 	w.OnClosing(func() bool {
 		ui.Stop()
 		return true
@@ -82,6 +105,9 @@ func connect() {
 		log.Fatal("Error initializing docker: ", err)
 	}
 	log.Println("Swarm connection inialized", docker)
+
+	manager.Init()
+	db.Init()
 
 }
 
