@@ -52,7 +52,7 @@ func gui() {
 		//ui.NewForeignEvent(status, func() {})
 		go manager.Start(m, status)
 
-		<-status //block until we get a message back that the status record is ready
+		//<-status //block until we get a message back that the status record is ready
 
 	})
 
