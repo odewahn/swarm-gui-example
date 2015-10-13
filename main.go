@@ -30,9 +30,8 @@ func gui() {
 	// Table of running containers
 	table := ui.NewTable(reflect.TypeOf(c))
 	go updateTable(table)
-	selectedContainer := ui.NewLabel("")
 	killBtn := ui.NewButton("Kill")
-	tableStack := ui.NewVerticalStack(table, selectedContainer, killBtn)
+	tableStack := ui.NewVerticalStack(table, killBtn)
 	containerListGrp := ui.NewGroup("Containers", tableStack)
 	containerListGrp.SetMargined(true)
 
@@ -47,10 +46,6 @@ func gui() {
 	})
 
 	killBtn.OnClicked(func() {
-		go Kill(selectedContainer.Text())
-	})
-
-	table.OnSelected(func() {
 		c := table.Selected()
 		table.Lock()
 		d := table.Data().(*[]Container)
@@ -58,7 +53,7 @@ func gui() {
 		//   http://giantmachines.tumblr.com/post/51007535999/golang-struct-shallow-copy
 		newC := *d
 		table.Unlock()
-		selectedContainer.SetText(newC[c].Name)
+		go Kill(newC[c].Name)
 	})
 
 	controlStack := ui.NewVerticalStack(l, imageName, startBtn)
