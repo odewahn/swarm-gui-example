@@ -9,12 +9,10 @@ import (
 
 	"github.com/andlabs/ui"
 	"github.com/joho/godotenv"
-	"github.com/odewahn/swarm-manager/db"
-	"github.com/odewahn/swarm-manager/manager"
-	"github.com/odewahn/swarm-manager/models"
 	"github.com/samalba/dockerclient"
 )
 
+// Container shows metadata about containers running on the cluster
 type Container struct {
 	Image string
 	Name  string
@@ -32,42 +30,49 @@ func gui() {
 	// Table of running containers
 	table := ui.NewTable(reflect.TypeOf(c))
 	go updateTable(table)
-	container_list_grp := ui.NewGroup("Containers", table)
-	container_list_grp.SetMargined(true)
+	selectedContainer := ui.NewLabel("")
+	killBtn := ui.NewButton("Kill")
+	tableStack := ui.NewVerticalStack(table, selectedContainer, killBtn)
+	containerListGrp := ui.NewGroup("Containers", tableStack)
+	containerListGrp.SetMargined(true)
 
 	//Stack for the control
 	l := ui.NewLabel("Image to start")
 	imageName := ui.NewTextField()
 	imageName.SetText("ipython/scipystack")
-	start_btn := ui.NewButton("Launch")
+	startBtn := ui.NewButton("Launch")
 
-	start_btn.OnClicked(func() {
-		m := &models.Container{
-			Image:      imageName.Text(),
-			User:       "odewahn",
-			Domainname: "i3.odewahn.com",
-		}
-		status := make(chan string)
-
-		//ui.NewForeignEvent(status, func() {})
-		go manager.Start(m, status)
-
-		//<-status //block until we get a message back that the status record is ready
-
+	startBtn.OnClicked(func() {
+		go Start(imageName.Text())
 	})
 
-	control_stack := ui.NewVerticalStack(l, imageName, start_btn)
-	control_grp := ui.NewGroup("Start Images", control_stack)
-	control_grp.SetMargined(true)
+	killBtn.OnClicked(func() {
+		go Kill(selectedContainer.Text())
+	})
+
+	table.OnSelected(func() {
+		c := table.Selected()
+		table.Lock()
+		d := table.Data().(*[]Container)
+		//this makes a shallow copy of the structure so that we can access elements per
+		//   http://giantmachines.tumblr.com/post/51007535999/golang-struct-shallow-copy
+		newC := *d
+		table.Unlock()
+		selectedContainer.SetText(newC[c].Name)
+	})
+
+	controlStack := ui.NewVerticalStack(l, imageName, startBtn)
+	controlGrp := ui.NewGroup("Start Images", controlStack)
+	controlGrp.SetMargined(true)
 
 	// Now make a new 2 column stack
-	main_stack := ui.NewHorizontalStack(control_grp, container_list_grp)
-	main_stack.SetStretchy(0)
-	main_stack.SetStretchy(1)
+	mainStack := ui.NewHorizontalStack(controlGrp, containerListGrp)
+	mainStack.SetStretchy(0)
+	mainStack.SetStretchy(1)
 
 	//stack := ui.NewVerticalStack(table)
 
-	w = ui.NewWindow("Window", 600, 300, main_stack)
+	w = ui.NewWindow("Window", 600, 300, mainStack)
 	w.SetMargined(true)
 
 	w.OnClosing(func() bool {
@@ -95,9 +100,9 @@ func connect() {
 		log.Fatal("Error loading .env file")
 	}
 	// Set up connection to swarm
-	tlsConfig, err := manager.GetTLSConfig(os.Getenv("SWARM_CREDS_DIR"))
+	tlsConfig, err := GetTLSConfig(os.Getenv("SWARM_CREDS_DIR"))
 	if err != nil {
-		log.Fatal("Could not create TLS certificate.")
+		log.Fatal("Could not find TLS certificate.")
 	}
 	// Setup the docker host
 	docker, err = dockerclient.NewDockerClient(os.Getenv("DOCKER_HOST"), tlsConfig)
@@ -105,9 +110,6 @@ func connect() {
 		log.Fatal("Error initializing docker: ", err)
 	}
 	log.Println("Swarm connection inialized", docker)
-
-	manager.Init()
-	db.Init()
 
 }
 
@@ -121,11 +123,11 @@ func ps() []Container {
 	for _, c := range containers {
 		//log.Println(c.Id)
 		//container, _ := docker.InspectContainer(c.Id)
-		c_new := Container{
+		cNew := Container{
 			Image: c.Image,
 			Name:  strings.Split(c.Names[0], "/")[2],
 		}
-		out = append(out, c_new)
+		out = append(out, cNew)
 	}
 	return out
 }
