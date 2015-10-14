@@ -11,6 +11,7 @@ import (
 	"github.com/andlabs/ui"
 	"github.com/joho/godotenv"
 	"github.com/samalba/dockerclient"
+	"github.com/toqueteos/webbrowser"
 )
 
 // Container shows metadata about containers running on the cluster
@@ -70,11 +71,22 @@ func gui() {
 		//   http://giantmachines.tumblr.com/post/51007535999/golang-struct-shallow-copy
 		newC := *d
 		table.Unlock()
-		fmt.Println(c)
 		if c > -1 {
 			fmt.Println("Getting info for container ", newC[c].Name)
 			selectedContainerInfo.SetText(Info(newC[c].Name))
 		}
+	})
+
+	openBrowserBtn.OnClicked(func() {
+		c := table.Selected()
+		table.Lock()
+		d := table.Data().(*[]Container)
+		//this makes a shallow copy of the structure so that we can access elements per
+		//   http://giantmachines.tumblr.com/post/51007535999/golang-struct-shallow-copy
+		newC := *d
+		table.Unlock()
+		url := fmt.Sprintf("%s.%s", newC[c].Name, os.Getenv("DOMAIN_NAME"))
+		webbrowser.Open(url)
 	})
 
 	killBtn.OnClicked(func() {
