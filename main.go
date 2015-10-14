@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"reflect"
@@ -27,22 +28,53 @@ func gui() {
 	connect()
 	var c Container
 
-	// Table of running containers
-	table := ui.NewTable(reflect.TypeOf(c))
-	go updateTable(table)
-	killBtn := ui.NewButton("Kill")
-	tableStack := ui.NewVerticalStack(table, killBtn)
-	containerListGrp := ui.NewGroup("Containers", tableStack)
-	containerListGrp.SetMargined(true)
-
 	//Stack for the control
 	l := ui.NewLabel("Image to start")
 	imageName := ui.NewTextField()
 	imageName.SetText("ipython/scipystack")
 	startBtn := ui.NewButton("Launch")
+	controlStack := ui.NewVerticalStack(l, imageName, startBtn)
+	controlGrp := ui.NewGroup("Launch Image", controlStack)
+	controlGrp.SetMargined(true)
+
+	// Table of running containers
+	table := ui.NewTable(reflect.TypeOf(c))
+	openBrowserBtn := ui.NewButton("Open in browser")
+	killBtn := ui.NewButton("Kill")
+	manageRunningContainerGrp := ui.NewHorizontalStack(openBrowserBtn, killBtn)
+	containerControlGrp := ui.NewVerticalStack(table, manageRunningContainerGrp)
+	containerListGrp := ui.NewGroup("Running containers", containerControlGrp)
+	containerListGrp.SetMargined(true)
+
+	//Container info area
+	selectedContainerInfo := ui.NewTextField()
+
+	// Now make a new 2 column stack
+	topStack := ui.NewHorizontalStack(controlGrp, containerListGrp)
+	topStack.SetStretchy(0)
+	topStack.SetStretchy(1)
+
+	mainStack := ui.NewVerticalStack(topStack, selectedContainerInfo)
+	mainStack.SetStretchy(0)
+	mainStack.SetStretchy(1)
 
 	startBtn.OnClicked(func() {
 		go Start(imageName.Text())
+	})
+
+	table.OnSelected(func() {
+		c := table.Selected()
+		table.Lock()
+		d := table.Data().(*[]Container)
+		//this makes a shallow copy of the structure so that we can access elements per
+		//   http://giantmachines.tumblr.com/post/51007535999/golang-struct-shallow-copy
+		newC := *d
+		table.Unlock()
+		fmt.Println(c)
+		if c > -1 {
+			fmt.Println("Getting info for container ", newC[c].Name)
+			selectedContainerInfo.SetText(Info(newC[c].Name))
+		}
 	})
 
 	killBtn.OnClicked(func() {
@@ -56,25 +88,16 @@ func gui() {
 		go Kill(newC[c].Name)
 	})
 
-	controlStack := ui.NewVerticalStack(l, imageName, startBtn)
-	controlGrp := ui.NewGroup("Start Images", controlStack)
-	controlGrp.SetMargined(true)
-
-	// Now make a new 2 column stack
-	mainStack := ui.NewHorizontalStack(controlGrp, containerListGrp)
-	mainStack.SetStretchy(0)
-	mainStack.SetStretchy(1)
-
-	//stack := ui.NewVerticalStack(table)
-
-	w = ui.NewWindow("Window", 600, 300, mainStack)
+	w = ui.NewWindow("Manage Containers on RCS", 600, 450, mainStack)
 	w.SetMargined(true)
 
 	w.OnClosing(func() bool {
 		ui.Stop()
 		return true
 	})
+	go updateTable(table)
 	w.Show()
+
 }
 
 func updateTable(table ui.Table) {

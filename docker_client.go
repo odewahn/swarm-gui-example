@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"log"
 	"os"
 
@@ -64,4 +65,14 @@ func Kill(containerID string) {
 		log.Println("Could not remove container ", containerID, err)
 	}
 	log.Println("Removed container ", containerID)
+}
+
+//Info grabs info about the container and returns it as a nice, serialized json blob
+func Info(containerID string) string {
+	c, _ := docker.InspectContainer(containerID)
+	out, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		log.Println(err)
+	}
+	return string(out)
 }
